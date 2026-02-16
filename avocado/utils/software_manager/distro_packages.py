@@ -1,7 +1,7 @@
 import logging
 import os
 
-from avocado.utils import distro
+from avocado.utils import distro, process
 from avocado.utils.software_manager.manager import SoftwareManager
 
 log = logging.getLogger("avocado.utils.software_manager")
@@ -31,7 +31,7 @@ def install_distro_packages(distro_pkg_map, interactive=False):
     pkgs = []
     detected_distro = distro.detect()
 
-    distro_specs = [spec for spec in distro_pkg_map if isinstance(spec, distro.Spec)]
+    distro_specs = [spec for spec in distro_pkg_map if isinstance(spec, distro.Spec)]  # noqa: E501
 
     for distro_spec in distro_specs:
         if (
@@ -74,32 +74,33 @@ def install_distro_packages(distro_pkg_map, interactive=False):
             result = software_manager.install(text)
     return result
 
+
 def ensure_tool(tool_name, custom_path=None, distro_pkg_map=None):
     """
-    Ensure tool is available from custom path or distro packages 
-    and return its version.
+    Ensure tool is available from custom path or distro packages.
 
     :param tool_name: Name of the tool (e.g. "perf")
     :param custom_path: Optional path to a binary provided via YAML
-    :param distro_pkg_map: Mapping of distro name/spec to a list of package names
+    :param distro_pkg_map: Mapping of distro name/spec to packages
     :return: version_string
     """
-    from avocado.utils import process
-    import os
-
-    sm = SoftwareManager()
     if custom_path:
         if not os.path.exists(custom_path):
-            raise RuntimeError(f"{tool_name} binary not found at {custom_path}")
-        ret = process.run(f"{custom_path} --version", ignore_status=True, shell=True)
+            raise RuntimeError(f"{tool_name} not found at {custom_path}")
+        ret = process.run(f"{custom_path} --version", ignore_status=True)
         if ret.exit_status != 0:
-            raise RuntimeError(f"{tool_name} binary at {custom_path} not functional")
+            msg = f"{tool_name} at {custom_path} not functional"
+            raise RuntimeError(msg)
         return ret.stdout.decode().strip()
 
     if not distro_pkg_map:
         raise RuntimeError(f"No package map provided for {tool_name}")
-    install_distro_packages(distro_pkg_map)
+
+    if not install_distro_packages(distro_pkg_map):
+        raise RuntimeError(f"Failed to install packages for {tool_name}")
+
     ret = process.run(f"{tool_name} --version", ignore_status=True)
     if ret.exit_status != 0:
         raise RuntimeError(f"{tool_name} not functional after install")
+
     return ret.stdout.decode().strip()
