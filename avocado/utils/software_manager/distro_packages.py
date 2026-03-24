@@ -31,7 +31,7 @@ def install_distro_packages(distro_pkg_map, interactive=False):
     pkgs = []
     detected_distro = distro.detect()
 
-    distro_specs = [spec for spec in distro_pkg_map if isinstance(spec, distro.Spec)]  # noqa: E501
+    distro_specs = [spec for spec in distro_pkg_map if isinstance(spec, distro.Spec)]
 
     for distro_spec in distro_specs:
         if (
