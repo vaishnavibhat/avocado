@@ -16,7 +16,6 @@ HTML output module.
 """
 
 import base64
-import codecs
 import os
 import platform
 import subprocess
@@ -163,7 +162,7 @@ class ReportModel:
             sysinfo_dict["element_id"] = f"{phase}_heading_{s_id}"
             sysinfo_dict["collapse_id"] = f"{phase}_collapse_{s_id}"
             try:
-                with codecs.open(sysinfo_path, "r", encoding="utf-8") as sysinfo_file:
+                with open(sysinfo_path, "r", encoding="utf-8") as sysinfo_file:
                     sysinfo_dict["contents"] = sysinfo_file.read()
             except (OSError, UnicodeDecodeError) as details:
                 path = os.path.relpath(sysinfo_path, self.html_output_dir)
@@ -236,7 +235,7 @@ class HTMLResult(Result):
         template = env.get_template("results.html")
         report_contents = template.render({"data": ReportModel(result, output_path)})
 
-        with codecs.open(output_path, "w", "utf-8") as report_file:
+        with open(output_path, "w", encoding="utf-8") as report_file:
             report_file.write(report_contents)
 
     def render(self, result, job):
