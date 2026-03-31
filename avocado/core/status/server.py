@@ -1,7 +1,11 @@
 import asyncio
+import logging
 import os
 
 from avocado.core.settings import settings
+from avocado.core.status.utils import StatusMsgInvalidJSONError
+
+LOG = logging.getLogger(__name__)
 
 
 class StatusServer:
@@ -56,4 +60,7 @@ class StatusServer:
                 continue
             if not raw_message:
                 return
-            self._repo.process_raw_message(raw_message)
+            try:
+                self._repo.process_raw_message(raw_message)
+            except StatusMsgInvalidJSONError as e:
+                LOG.warning("Invalid JSON in internal status message: %s", e)
