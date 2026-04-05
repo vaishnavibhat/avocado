@@ -20,7 +20,6 @@
 Module for all PCI devices related functions.
 """
 
-
 import errno
 import os
 import re
@@ -335,10 +334,8 @@ def unbind(driver, full_pci_address):
     """
     genio.write_file_or_fail(f"/sys/bus/pci/drivers/{driver}/unbind", full_pci_address)
     if wait.wait_for(
-        lambda: os.path.exists(
-            f"/sys/bus/pci/drivers/\
-{driver}/{full_pci_address}"
-        ),
+        lambda: os.path.exists(f"/sys/bus/pci/drivers/\
+{driver}/{full_pci_address}"),
         timeout=5,
     ):
         raise ValueError(f"Not able to unbind {full_pci_address} from {driver}")
@@ -354,10 +351,8 @@ def bind(driver, full_pci_address):
     """
     genio.write_file_or_fail(f"/sys/bus/pci/drivers/{driver}/bind", full_pci_address)
     if not wait.wait_for(
-        lambda: os.path.exists(
-            f"/sys/bus/pci/drivers/\
-{driver}/{full_pci_address}"
-        ),
+        lambda: os.path.exists(f"/sys/bus/pci/drivers/\
+{driver}/{full_pci_address}"),
         timeout=5,
     ):
         raise ValueError(f"Not able to bind {full_pci_address} to {driver}")
@@ -697,3 +692,19 @@ def get_cfg(dom_pci_address):
         device_subvendor = re.search(r"([0-9a-e]{8})", cfg_dic["Description"])
         cfg_dic["subvendor_device"] = device_subvendor.group()
     return cfg_dic
+
+
+def is_accelerator():
+    """
+    Checks if any PCI device is of class 'accelerator'.
+
+    :return: True if an accelerator device is found, False otherwise.
+    :rtype: bool
+    """
+    for dev in os.listdir("/sys/bus/pci/devices"):
+        try:
+            if get_pci_class_name(dev) == "accelerator":
+                return True
+        except ValueError:
+            continue
+    return False
