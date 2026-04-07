@@ -49,7 +49,7 @@ setup(
     include_package_data=True,
     install_requires=[
         f"avocado-framework=={VERSION}",
-        "resultsdb-api==2.1.5",
+        "resultsdb-api>=2.1.5,<2.2",
         "urllib3<2.3.0; python_version < '3.9'",
     ],
     entry_points={
