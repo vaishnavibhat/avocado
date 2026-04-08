@@ -39,6 +39,21 @@ jobs:
           retention-days: 1
       - run: echo "🥑 This job's status is ${{ job.status }}."
 
+  commitlint:
+    name: Commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Lint commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.ts
+          helpURL: https://avocado-framework.readthedocs.io/en/latest/guides/contributor/chapters/styleguides.html#commit-style-guide
+
   smokecheck-linux:
 
     name: Smokecheck on Linux with Python ${{ matrix.python-version }}
