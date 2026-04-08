@@ -47,11 +47,10 @@ def install_huggingface_cli():
             ["huggingface-cli", "--version"],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
         )
         if result.returncode == 0:
-            LOG.info("Hugging Face CLI already installed: %s",
-                     result.stdout.strip())
+            LOG.info("Hugging Face CLI already installed: %s", result.stdout.strip())
             return True
 
         LOG.info("Installing Hugging Face CLI...")
@@ -59,7 +58,7 @@ def install_huggingface_cli():
             ["pip", "install", "-U", "huggingface_hub[cli]"],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
         )
 
         if result.returncode == 0:
@@ -68,11 +67,10 @@ def install_huggingface_cli():
                 ["huggingface-cli", "--version"],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
             if verify_result.returncode == 0:
-                LOG.info("Verified installation: %s",
-                         verify_result.stdout.strip())
+                LOG.info("Verified installation: %s", verify_result.stdout.strip())
                 return True
 
         LOG.error("Failed to install Hugging Face CLI")
@@ -114,15 +112,14 @@ def download_model_from_hf(hf_model_id, local_dir, model_name):
             capture_output=True,
             text=True,
             timeout=3600,
-            check=False
+            check=False,
         )
 
         if result.returncode == 0:
             LOG.info("Model downloaded successfully")
             if os.path.exists(model_path):
                 contents = os.listdir(model_path)
-                LOG.info(
-                    "Downloaded model contains %d files/folders:", len(contents))
+                LOG.info("Downloaded model contains %d files/folders:", len(contents))
                 for item in contents[:10]:  # Show first 10 items
                     LOG.info("  - %s", item)
                 if len(contents) > 10:
@@ -132,8 +129,7 @@ def download_model_from_hf(hf_model_id, local_dir, model_name):
                 LOG.error("Model directory not found after download")
                 return False
         else:
-            LOG.error("Failed to download model. Exit code: %d",
-                      result.returncode)
+            LOG.error("Failed to download model. Exit code: %d", result.returncode)
             if result.stderr:
                 LOG.error("Error output: %s", result.stderr)
             return False
@@ -296,7 +292,16 @@ class Podman(_Podman):
         except PodmanException as ex:
             raise PodmanException("Failed to restart the container.") from ex
 
-    def exec_command(self, container_id, command, user=None, workdir=None, env=None, interactive=False, tty=False):
+    def exec_command(
+        self,
+        container_id,
+        command,
+        user=None,
+        workdir=None,
+        env=None,
+        interactive=False,
+        tty=False,
+    ):
         """Execute a command in a running container.
 
         :param str container_id: Container identification string.
@@ -335,12 +340,17 @@ class Podman(_Podman):
             return self.execute(*cmd_args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to execute command in container {container_id}.") from ex
+                f"Failed to execute command in container {container_id}."
+            ) from ex
 
-    def collect_container_aiu_metrics(self, container_id, output_file,
-                                      dtcompiler_export_dir=None,
-                                      stats_command="aiu-smi --csv",
-                                      timeout=None):
+    def collect_container_aiu_metrics(
+        self,
+        container_id,
+        output_file,
+        dtcompiler_export_dir=None,
+        stats_command="aiu-smi --csv",
+        timeout=None,
+    ):
         """
         Start collecting AIU metrics from a container in the background using nohup.
 
@@ -362,7 +372,8 @@ class Podman(_Podman):
 
             if dtcompiler_export_dir:
                 podman_cmd.extend(
-                    ["-e", f"DTCOMPILER_EXPORT_DIR={dtcompiler_export_dir}"])
+                    ["-e", f"DTCOMPILER_EXPORT_DIR={dtcompiler_export_dir}"]
+                )
 
             podman_cmd.append(container_id)
 
@@ -371,22 +382,26 @@ class Podman(_Podman):
             if timeout:
                 full_command = f"nohup bash -c 'timeout {timeout} {' '.join(podman_cmd)} | tee {output_file}' > /dev/null 2>&1 &"
                 LOG.info(
-                    "Starting background stats collection with %d second timeout: %s", timeout, full_command)
+                    "Starting background stats collection with %d second timeout: %s",
+                    timeout,
+                    full_command,
+                )
             else:
                 full_command = f"nohup bash -c '{' '.join(podman_cmd)} | tee {output_file}' > /dev/null 2>&1 &"
                 LOG.info(
-                    "Starting background stats collection (no timeout): %s", full_command)
+                    "Starting background stats collection (no timeout): %s",
+                    full_command,
+                )
 
             process = subprocess.Popen(
                 full_command,
                 shell=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                start_new_session=True
+                start_new_session=True,
             )
 
-            LOG.info(
-                "Background stats collection started with PID: %s", process.pid)
+            LOG.info("Background stats collection started with PID: %s", process.pid)
             return process
 
         except Exception as ex:
@@ -394,7 +409,9 @@ class Podman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    def collect_container_stats(self, container_id, output_dir, interval=1, duration=60):
+    def collect_container_stats(
+        self, container_id, output_dir, interval=1, duration=60
+    ):
         """
         Collect Podman CPU and memory stats and write as JSON.
 
@@ -412,18 +429,15 @@ class Podman(_Podman):
         """
         try:
             if container_id.lower() == "all":
-                returncode, stdout, stderr = self.execute(
-                    "ps", "--format", "{{.ID}}")
-                container_ids = stdout.decode().strip().split('\n')
-                container_ids = [cid.strip()
-                                 for cid in container_ids if cid.strip()]
+                _, stdout, _ = self.execute("ps", "--format", "{{.ID}}")
+                container_ids = stdout.decode().strip().split("\n")
+                container_ids = [cid.strip() for cid in container_ids if cid.strip()]
 
                 if not container_ids:
                     LOG.warning("No running containers found")
                     return []
 
-                LOG.info("Collecting stats for %d containers",
-                         len(container_ids))
+                LOG.info("Collecting stats for %d containers", len(container_ids))
 
                 json_files = []
                 for cid in container_ids:
@@ -443,7 +457,9 @@ class Podman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    def _collect_single_container_stats(self, container_id, base_output_dir, interval, duration):
+    def _collect_single_container_stats(
+        self, container_id, base_output_dir, interval, duration
+    ):
         """
         Internal method to collect stats for a single container.
 
@@ -457,24 +473,28 @@ class Podman(_Podman):
         try:
             container_output_dir = os.path.join(base_output_dir, container_id)
             Path(container_output_dir).mkdir(parents=True, exist_ok=True)
-            json_file = os.path.join(
-                container_output_dir, f"{container_id}_stats.json")
+            json_file = os.path.join(container_output_dir, f"{container_id}_stats.json")
 
             all_stats = []
             end_time = time.time() + duration
 
-            LOG.info("Starting stats collection for container %s (duration: %ds, interval: %ds)",
-                     container_id, duration, interval)
+            LOG.info(
+                "Starting stats collection for container %s (duration: %ds, interval: %ds)",
+                container_id,
+                duration,
+                interval,
+            )
 
             while time.time() < end_time:
                 try:
-                    returncode, stdout, stderr = self.execute(
+                    _, stdout, stderr = self.execute(
                         "stats", "--no-stream", "--format", "json", container_id
                     )
 
                     if stderr:
-                        LOG.warning("[%s] stderr: %s",
-                                    container_id, stderr.decode().strip())
+                        LOG.warning(
+                            "[%s] stderr: %s", container_id, stderr.decode().strip()
+                        )
                         time.sleep(interval)
                         continue
 
@@ -488,25 +508,32 @@ class Podman(_Podman):
                             "mem_usage": stats.get("mem_usage", ""),
                             "net_io": stats.get("net_io", ""),
                             "block_io": stats.get("block_io", ""),
-                            "pids": stats.get("pids", "")
+                            "pids": stats.get("pids", ""),
                         }
                         all_stats.append(entry)
-                        LOG.debug("[%s] CPU: %s%%, MEM: %s%%",
-                                  container_id, entry["cpu_percent"], entry["mem_percent"])
+                        LOG.debug(
+                            "[%s] CPU: %s%%, MEM: %s%%",
+                            container_id,
+                            entry["cpu_percent"],
+                            entry["mem_percent"],
+                        )
 
                 except json.JSONDecodeError as je:
-                    LOG.error("[%s] Failed to parse stats JSON: %s",
-                              container_id, je)
+                    LOG.error("[%s] Failed to parse stats JSON: %s", container_id, je)
                 except PodmanException as pe:
                     LOG.error("[%s] Failed to get stats: %s", container_id, pe)
 
                 time.sleep(interval)
 
-            with open(json_file, "w") as jf:
+            with open(json_file, "w", encoding="utf-8") as jf:
                 json.dump(all_stats, jf, indent=2)
 
-            LOG.info("[%s] Collected %d stat entries → %s",
-                     container_id, len(all_stats), json_file)
+            LOG.info(
+                "[%s] Collected %d stat entries → %s",
+                container_id,
+                len(all_stats),
+                json_file,
+            )
             return json_file
 
         except Exception as ex:
@@ -514,10 +541,17 @@ class Podman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    def send_vllm_inference_request(self, port, model_path, prompt,
-                                    max_tokens=512, temperature=1.0,
-                                    system_message="You are a helpful AI assistant.",
-                                    host="127.0.0.1", use_jq=True):
+    def send_vllm_inference_request(
+        self,
+        port,
+        model_path,
+        prompt,
+        max_tokens=512,
+        temperature=1.0,
+        system_message="You are a helpful AI assistant.",
+        host="127.0.0.1",
+        use_jq=True,
+    ):
         """
         Send an inference request to VLLM server using curl.
 
@@ -542,8 +576,8 @@ class Podman(_Podman):
                 "temperature": temperature,
                 "messages": [
                     {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
-                ]
+                    {"role": "user", "content": prompt},
+                ],
             }
 
             payload_json = json.dumps(payload)
@@ -553,13 +587,16 @@ class Podman(_Podman):
             curl_cmd = [
                 "curl",
                 url,
-                "-H", "Content-Type: application/json",
-                "-d", payload_json
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                payload_json,
             ]
 
             if use_jq:
                 curl_cmd_str = " ".join(
-                    [f"'{arg}'" if " " in arg else arg for arg in curl_cmd])
+                    [f"'{arg}'" if " " in arg else arg for arg in curl_cmd]
+                )
                 full_cmd = f"{curl_cmd_str} | jq"
                 LOG.info("Sending inference request: %s", full_cmd)
             else:
@@ -571,15 +608,15 @@ class Podman(_Podman):
                 shell=use_jq,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout for inference
+                timeout=300,  # 5 minute timeout for inference
+                check=False,
             )
 
             if result.returncode == 0:
                 LOG.info("Inference request successful")
                 LOG.debug("Response: %s", result.stdout[:500])
             else:
-                LOG.error("Inference request failed with code %d",
-                          result.returncode)
+                LOG.error("Inference request failed with code %d", result.returncode)
                 LOG.error("Error: %s", result.stderr)
 
             return result.returncode, result.stdout, result.stderr
@@ -694,32 +731,50 @@ class Podman(_Podman):
             cmd_args.extend(["-e", f"VLLM_DT_CHUNK_LEN={vllm_dt_chunk_len}"])
         if vllm_spyre_use_chunked_prefill is not None:
             cmd_args.extend(
-                ["-e",
-                    f"VLLM_SPYRE_USE_CHUNKED_PREFILL={vllm_spyre_use_chunked_prefill}"]
+                [
+                    "-e",
+                    f"VLLM_SPYRE_USE_CHUNKED_PREFILL={vllm_spyre_use_chunked_prefill}",
+                ]
             )
 
         if dtlog_level is not None:
             cmd_args.extend(["-e", f"DTLOG_LEVEL={dtlog_level}"])
         if dtcompiler_keep_export is not None:
-            cmd_args.extend(
-                ["-e", f"DTCOMPILER_KEEP_EXPORT={dtcompiler_keep_export}"])
+            cmd_args.extend(["-e", f"DTCOMPILER_KEEP_EXPORT={dtcompiler_keep_export}"])
         if vllm_spyre_require_precompiled_decoders is not None:
             cmd_args.extend(
-                ["-e", f"VLLM_SPYRE_REQUIRE_PRECOMPILED_DECODERS={vllm_spyre_require_precompiled_decoders}"])
+                [
+                    "-e",
+                    f"VLLM_SPYRE_REQUIRE_PRECOMPILED_DECODERS={vllm_spyre_require_precompiled_decoders}",
+                ]
+            )
         if enable_flex_timing is not None:
             cmd_args.extend(["-e", f"ENABLE_FLEX_TIMING={enable_flex_timing}"])
         if flex_print_end_to_end_breakdown is not None:
             cmd_args.extend(
-                ["-e", f"FLEX_PRINT_END_TO_END_BREAKDOWN={flex_print_end_to_end_breakdown}"])
+                [
+                    "-e",
+                    f"FLEX_PRINT_END_TO_END_BREAKDOWN={flex_print_end_to_end_breakdown}",
+                ]
+            )
         if flex_skip_timestamp_calibration is not None:
             cmd_args.extend(
-                ["-e", f"FLEX_SKIP_TIMESTAMP_CALIBRATION={flex_skip_timestamp_calibration}"])
+                [
+                    "-e",
+                    f"FLEX_SKIP_TIMESTAMP_CALIBRATION={flex_skip_timestamp_calibration}",
+                ]
+            )
         if flex_scheduler_print_raw_timestamps is not None:
             cmd_args.extend(
-                ["-e", f"FLEX_SCHEDULER_PRINT_RAW_TIMESTAMPS={flex_scheduler_print_raw_timestamps}"])
+                [
+                    "-e",
+                    f"FLEX_SCHEDULER_PRINT_RAW_TIMESTAMPS={flex_scheduler_print_raw_timestamps}",
+                ]
+            )
         if flex_global_profile_prefix is not None:
             cmd_args.extend(
-                ["-e", f"FLEX_GLOBAL_PROFILE_PREFIX={flex_global_profile_prefix}"])
+                ["-e", f"FLEX_GLOBAL_PROFILE_PREFIX={flex_global_profile_prefix}"]
+            )
 
         if user is not None:
             cmd_args.extend(["--user", user])
@@ -745,8 +800,7 @@ class Podman(_Podman):
             cmd_args.append("--enable-prefix-caching")
 
         if max_num_batched_tokens is not None:
-            cmd_args.extend(["--max-num-batched-tokens",
-                            str(max_num_batched_tokens)])
+            cmd_args.extend(["--max-num-batched-tokens", str(max_num_batched_tokens)])
 
         if additional_vllm_args:
             cmd_args.extend(additional_vllm_args)
@@ -788,7 +842,8 @@ class Podman(_Podman):
             return self.execute(*args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to get logs for container {container_id}.") from ex
+                f"Failed to get logs for container {container_id}."
+            ) from ex
 
     def inspect(self, container_id):
         """Inspect a container and return detailed information.
@@ -800,7 +855,8 @@ class Podman(_Podman):
             return self.execute("inspect", container_id)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to inspect container {container_id}.") from ex
+                f"Failed to inspect container {container_id}."
+            ) from ex
 
     def remove(self, container_id, force=False):
         """Remove a container.
@@ -816,10 +872,17 @@ class Podman(_Podman):
             args.append(container_id)
             return self.execute(*args)
         except PodmanException as ex:
-            raise PodmanException(
-                f"Failed to remove container {container_id}.") from ex
+            raise PodmanException(f"Failed to remove container {container_id}.") from ex
 
-    def login(self, registry, username=None, password=None, api_key=None, api_key_username="iamapikey", password_stdin=False):
+    def login(
+        self,
+        registry,
+        username=None,
+        password=None,
+        api_key=None,
+        api_key_username="iamapikey",
+        password_stdin=False,
+    ):
         """Login to a container registry.
 
         :param str registry: Registry URL.
@@ -853,8 +916,7 @@ class Podman(_Podman):
             args.append(registry)
             return self.execute(*args)
         except PodmanException as ex:
-            raise PodmanException(
-                f"Failed to login to registry {registry}.") from ex
+            raise PodmanException(f"Failed to login to registry {registry}.") from ex
 
     def pull(self, image):
         """Pull an image from a registry.
@@ -882,7 +944,8 @@ class Podman(_Podman):
             return self.execute(*args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to get stats for container {container_id}.") from ex
+                f"Failed to get stats for container {container_id}."
+            ) from ex
 
 
 class AsyncPodman(_Podman):
@@ -1010,7 +1073,16 @@ class AsyncPodman(_Podman):
         except PodmanException as ex:
             raise PodmanException("Failed to restart the container.") from ex
 
-    async def exec_command(self, container_id, command, user=None, workdir=None, env=None, interactive=False, tty=False):
+    async def exec_command(
+        self,
+        container_id,
+        command,
+        user=None,
+        workdir=None,
+        env=None,
+        interactive=False,
+        tty=False,
+    ):
         """Execute a command in a running container.
 
         :param str container_id: Container identification string.
@@ -1053,12 +1125,17 @@ class AsyncPodman(_Podman):
             return await self.execute(*cmd_args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to execute command in container {container_id}.") from ex
+                f"Failed to execute command in container {container_id}."
+            ) from ex
 
-    async def collect_container_aiu_metrics(self, container_id, output_file,
-                                            dtcompiler_export_dir=None,
-                                            stats_command="aiu-smi --csv",
-                                            timeout=None):
+    async def collect_container_aiu_metrics(
+        self,
+        container_id,
+        output_file,
+        dtcompiler_export_dir=None,
+        stats_command="aiu-smi --csv",
+        timeout=None,
+    ):
         """
         Start collecting AIU metrics from a container in the background using nohup.
 
@@ -1082,7 +1159,8 @@ class AsyncPodman(_Podman):
             # Add environment variable if provided
             if dtcompiler_export_dir:
                 podman_cmd.extend(
-                    ["-e", f"DTCOMPILER_EXPORT_DIR={dtcompiler_export_dir}"])
+                    ["-e", f"DTCOMPILER_EXPORT_DIR={dtcompiler_export_dir}"]
+                )
 
             # Add container ID
             podman_cmd.append(container_id)
@@ -1095,12 +1173,17 @@ class AsyncPodman(_Podman):
                 # Use timeout command to automatically stop after specified duration
                 full_command = f"nohup bash -c 'timeout {timeout} {' '.join(podman_cmd)} | tee {output_file}' > /dev/null 2>&1 &"
                 LOG.info(
-                    "Starting background stats collection with %d second timeout: %s", timeout, full_command)
+                    "Starting background stats collection with %d second timeout: %s",
+                    timeout,
+                    full_command,
+                )
             else:
                 # Run indefinitely without timeout
                 full_command = f"nohup bash -c '{' '.join(podman_cmd)} | tee {output_file}' > /dev/null 2>&1 &"
                 LOG.info(
-                    "Starting background stats collection (no timeout): %s", full_command)
+                    "Starting background stats collection (no timeout): %s",
+                    full_command,
+                )
 
             # Execute the command in the background
             process = subprocess.Popen(
@@ -1108,11 +1191,10 @@ class AsyncPodman(_Podman):
                 shell=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                start_new_session=True
+                start_new_session=True,
             )
 
-            LOG.info(
-                "Background stats collection started with PID: %s", process.pid)
+            LOG.info("Background stats collection started with PID: %s", process.pid)
             return process
 
         except Exception as ex:
@@ -1120,7 +1202,9 @@ class AsyncPodman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    async def collect_container_stats(self, container_id, output_dir, interval=1, duration=60):
+    async def collect_container_stats(
+        self, container_id, output_dir, interval=1, duration=60
+    ):
         """
         Collect Podman CPU and memory stats and write as JSON.
 
@@ -1140,17 +1224,15 @@ class AsyncPodman(_Podman):
             # Determine which containers to monitor
             if container_id.lower() == "all":
                 # Get all running containers
-                returncode, stdout, stderr = await self.execute("ps", "--format", "{{.ID}}")
-                container_ids = stdout.decode().strip().split('\n')
-                container_ids = [cid.strip()
-                                 for cid in container_ids if cid.strip()]
+                _, stdout, _ = await self.execute("ps", "--format", "{{.ID}}")
+                container_ids = stdout.decode().strip().split("\n")
+                container_ids = [cid.strip() for cid in container_ids if cid.strip()]
 
                 if not container_ids:
                     LOG.warning("No running containers found")
                     return []
 
-                LOG.info("Collecting stats for %d containers",
-                         len(container_ids))
+                LOG.info("Collecting stats for %d containers", len(container_ids))
 
                 # Collect stats for each container
                 json_files = []
@@ -1172,7 +1254,9 @@ class AsyncPodman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    async def _collect_single_container_stats(self, container_id, base_output_dir, interval, duration):
+    async def _collect_single_container_stats(
+        self, container_id, base_output_dir, interval, duration
+    ):
         """
         Internal method to collect stats for a single container.
 
@@ -1187,25 +1271,29 @@ class AsyncPodman(_Podman):
             # Create container-specific output directory
             container_output_dir = os.path.join(base_output_dir, container_id)
             Path(container_output_dir).mkdir(parents=True, exist_ok=True)
-            json_file = os.path.join(
-                container_output_dir, f"{container_id}_stats.json")
+            json_file = os.path.join(container_output_dir, f"{container_id}_stats.json")
 
             all_stats = []
             end_time = time.time() + duration
 
-            LOG.info("Starting stats collection for container %s (duration: %ds, interval: %ds)",
-                     container_id, duration, interval)
+            LOG.info(
+                "Starting stats collection for container %s (duration: %ds, interval: %ds)",
+                container_id,
+                duration,
+                interval,
+            )
 
             while time.time() < end_time:
                 try:
                     # Get stats using podman stats command
-                    returncode, stdout, stderr = await self.execute(
+                    _, stdout, stderr = await self.execute(
                         "stats", "--no-stream", "--format", "json", container_id
                     )
 
                     if stderr:
-                        LOG.warning("[%s] stderr: %s",
-                                    container_id, stderr.decode().strip())
+                        LOG.warning(
+                            "[%s] stderr: %s", container_id, stderr.decode().strip()
+                        )
                         await asyncio.sleep(interval)
                         continue
 
@@ -1220,15 +1308,18 @@ class AsyncPodman(_Podman):
                             "mem_usage": stats.get("mem_usage", ""),
                             "net_io": stats.get("net_io", ""),
                             "block_io": stats.get("block_io", ""),
-                            "pids": stats.get("pids", "")
+                            "pids": stats.get("pids", ""),
                         }
                         all_stats.append(entry)
-                        LOG.debug("[%s] CPU: %s%%, MEM: %s%%",
-                                  container_id, entry["cpu_percent"], entry["mem_percent"])
+                        LOG.debug(
+                            "[%s] CPU: %s%%, MEM: %s%%",
+                            container_id,
+                            entry["cpu_percent"],
+                            entry["mem_percent"],
+                        )
 
                 except json.JSONDecodeError as je:
-                    LOG.error("[%s] Failed to parse stats JSON: %s",
-                              container_id, je)
+                    LOG.error("[%s] Failed to parse stats JSON: %s", container_id, je)
                 except PodmanException as pe:
                     LOG.error("[%s] Failed to get stats: %s", container_id, pe)
 
@@ -1238,8 +1329,12 @@ class AsyncPodman(_Podman):
             with open(json_file, "w", encoding="utf-8") as jf:
                 json.dump(all_stats, jf, indent=2)
 
-            LOG.info("[%s] Collected %d stat entries → %s",
-                     container_id, len(all_stats), json_file)
+            LOG.info(
+                "[%s] Collected %d stat entries → %s",
+                container_id,
+                len(all_stats),
+                json_file,
+            )
             return json_file
 
         except Exception as ex:
@@ -1247,10 +1342,17 @@ class AsyncPodman(_Podman):
             LOG.error("%s: %s", error_msg, ex)
             raise PodmanException(error_msg) from ex
 
-    async def send_vllm_inference_request(self, port, model_path, prompt,
-                                          max_tokens=512, temperature=1.0,
-                                          system_message="You are a helpful AI assistant.",
-                                          host="127.0.0.1", use_jq=True):
+    async def send_vllm_inference_request(
+        self,
+        port,
+        model_path,
+        prompt,
+        max_tokens=512,
+        temperature=1.0,
+        system_message="You are a helpful AI assistant.",
+        host="127.0.0.1",
+        use_jq=True,
+    ):
         """
         Send an inference request to VLLM server using curl.
 
@@ -1276,8 +1378,8 @@ class AsyncPodman(_Podman):
                 "temperature": temperature,
                 "messages": [
                     {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
-                ]
+                    {"role": "user", "content": prompt},
+                ],
             }
 
             # Convert payload to JSON string
@@ -1289,14 +1391,17 @@ class AsyncPodman(_Podman):
             curl_cmd = [
                 "curl",
                 url,
-                "-H", "Content-Type: application/json",
-                "-d", payload_json
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                payload_json,
             ]
 
             # Add jq for pretty printing if requested
             if use_jq:
                 curl_cmd_str = " ".join(
-                    [f"'{arg}'" if " " in arg else arg for arg in curl_cmd])
+                    [f"'{arg}'" if " " in arg else arg for arg in curl_cmd]
+                )
                 full_cmd_str = f"{curl_cmd_str} | jq"
                 LOG.info("Sending inference request: %s", full_cmd_str)
 
@@ -1304,7 +1409,7 @@ class AsyncPodman(_Podman):
                 proc = await asyncio.create_subprocess_shell(
                     full_cmd_str,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
                 )
             else:
                 LOG.info("Sending inference request to %s", url)
@@ -1313,7 +1418,7 @@ class AsyncPodman(_Podman):
                 proc = await asyncio.create_subprocess_exec(
                     *curl_cmd,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
                 )
 
             try:
@@ -1322,11 +1427,11 @@ class AsyncPodman(_Podman):
 
                 if returncode == 0:
                     LOG.info("Inference request successful")
-                    LOG.debug("Response: %s", stdout.decode()
-                              [:500])  # Log first 500 chars
+                    LOG.debug(
+                        "Response: %s", stdout.decode()[:500]
+                    )  # Log first 500 chars
                 else:
-                    LOG.error(
-                        "Inference request failed with code %d", returncode)
+                    LOG.error("Inference request failed with code %d", returncode)
                     LOG.error("Error: %s", stderr.decode())
 
                 return returncode, stdout.decode(), stderr.decode()
@@ -1424,8 +1529,10 @@ class AsyncPodman(_Podman):
             cmd_args.extend(["-e", f"VLLM_DT_CHUNK_LEN={vllm_dt_chunk_len}"])
         if vllm_spyre_use_chunked_prefill is not None:
             cmd_args.extend(
-                ["-e",
-                    f"VLLM_SPYRE_USE_CHUNKED_PREFILL={vllm_spyre_use_chunked_prefill}"]
+                [
+                    "-e",
+                    f"VLLM_SPYRE_USE_CHUNKED_PREFILL={vllm_spyre_use_chunked_prefill}",
+                ]
             )
 
         if container_name:
@@ -1493,7 +1600,8 @@ class AsyncPodman(_Podman):
             return await self.execute(*args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to get logs for container {container_id}.") from ex
+                f"Failed to get logs for container {container_id}."
+            ) from ex
 
     async def inspect(self, container_id):
         """Inspect a container and return detailed information.
@@ -1505,7 +1613,8 @@ class AsyncPodman(_Podman):
             return await self.execute("inspect", container_id)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to inspect container {container_id}.") from ex
+                f"Failed to inspect container {container_id}."
+            ) from ex
 
     async def remove(self, container_id, force=False):
         """Remove a container.
@@ -1521,10 +1630,17 @@ class AsyncPodman(_Podman):
             args.append(container_id)
             return await self.execute(*args)
         except PodmanException as ex:
-            raise PodmanException(
-                f"Failed to remove container {container_id}.") from ex
+            raise PodmanException(f"Failed to remove container {container_id}.") from ex
 
-    async def login(self, registry, username=None, password=None, api_key=None, api_key_username="iamapikey", password_stdin=False):
+    async def login(
+        self,
+        registry,
+        username=None,
+        password=None,
+        api_key=None,
+        api_key_username="iamapikey",
+        password_stdin=False,
+    ):
         """Login to a container registry.
 
         :param str registry: Registry URL.
@@ -1558,8 +1674,7 @@ class AsyncPodman(_Podman):
             args.append(registry)
             return await self.execute(*args)
         except PodmanException as ex:
-            raise PodmanException(
-                f"Failed to login to registry {registry}.") from ex
+            raise PodmanException(f"Failed to login to registry {registry}.") from ex
 
     async def pull(self, image):
         """Pull an image from a registry.
@@ -1587,7 +1702,8 @@ class AsyncPodman(_Podman):
             return await self.execute(*args)
         except PodmanException as ex:
             raise PodmanException(
-                f"Failed to get stats for container {container_id}.") from ex
+                f"Failed to get stats for container {container_id}."
+            ) from ex
 
     async def run_multiple_vllm_containers(
         self,
@@ -1688,18 +1804,21 @@ class AsyncPodman(_Podman):
         results = []
         for container_name, result in zip(container_names, task_results):
             if isinstance(result, Exception):
-                LOG.error("Failed to create container %s: %s",
-                          container_name, str(result))
+                LOG.error(
+                    "Failed to create container %s: %s", container_name, str(result)
+                )
                 results.append((container_name, None, None, str(result)))
             elif isinstance(result, tuple) and len(result) == 3:
                 returncode, stdout, stderr = result
                 results.append((container_name, returncode, stdout, stderr))
                 LOG.info("Container %s created successfully", container_name)
             else:
-                LOG.error("Unexpected result type for container %s: %s",
-                          container_name, type(result))
-                results.append((container_name, None, None,
-                               "Unexpected result type"))
+                LOG.error(
+                    "Unexpected result type for container %s: %s",
+                    container_name,
+                    type(result),
+                )
+                results.append((container_name, None, None, "Unexpected result type"))
 
         return results
 
@@ -1715,18 +1834,19 @@ class AsyncPodman(_Podman):
         output = []
         for container_id, result in zip(container_ids, results):
             if isinstance(result, Exception):
-                LOG.error("Failed to start container %s: %s",
-                          container_id, str(result))
+                LOG.error("Failed to start container %s: %s", container_id, str(result))
                 output.append((container_id, None, None, str(result)))
             elif isinstance(result, tuple) and len(result) == 3:
                 returncode, stdout, stderr = result
                 output.append((container_id, returncode, stdout, stderr))
                 LOG.info("Container %s started successfully", container_id)
             else:
-                LOG.error("Unexpected result type for container %s: %s",
-                          container_id, type(result))
-                output.append((container_id, None, None,
-                              "Unexpected result type"))
+                LOG.error(
+                    "Unexpected result type for container %s: %s",
+                    container_id,
+                    type(result),
+                )
+                output.append((container_id, None, None, "Unexpected result type"))
 
         return output
 
@@ -1742,18 +1862,19 @@ class AsyncPodman(_Podman):
         output = []
         for container_id, result in zip(container_ids, results):
             if isinstance(result, Exception):
-                LOG.error("Failed to stop container %s: %s",
-                          container_id, str(result))
+                LOG.error("Failed to stop container %s: %s", container_id, str(result))
                 output.append((container_id, None, None, str(result)))
             elif isinstance(result, tuple) and len(result) == 3:
                 returncode, stdout, stderr = result
                 output.append((container_id, returncode, stdout, stderr))
                 LOG.info("Container %s stopped successfully", container_id)
             else:
-                LOG.error("Unexpected result type for container %s: %s",
-                          container_id, type(result))
-                output.append((container_id, None, None,
-                              "Unexpected result type"))
+                LOG.error(
+                    "Unexpected result type for container %s: %s",
+                    container_id,
+                    type(result),
+                )
+                output.append((container_id, None, None, "Unexpected result type"))
 
         return output
 
@@ -1764,25 +1885,29 @@ class AsyncPodman(_Podman):
         :param bool force: If True, force removal of running containers.
         :rtype: list of tuples (container_id, returncode, stdout, stderr).
         """
-        tasks = [self.remove(container_id, force=force)
-                 for container_id in container_ids]
+        tasks = [
+            self.remove(container_id, force=force) for container_id in container_ids
+        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         output = []
         for container_id, result in zip(container_ids, results):
             if isinstance(result, Exception):
-                LOG.error("Failed to remove container %s: %s",
-                          container_id, str(result))
+                LOG.error(
+                    "Failed to remove container %s: %s", container_id, str(result)
+                )
                 output.append((container_id, None, None, str(result)))
             elif isinstance(result, tuple) and len(result) == 3:
                 returncode, stdout, stderr = result
                 output.append((container_id, returncode, stdout, stderr))
                 LOG.info("Container %s removed successfully", container_id)
             else:
-                LOG.error("Unexpected result type for container %s: %s",
-                          container_id, type(result))
-                output.append((container_id, None, None,
-                              "Unexpected result type"))
+                LOG.error(
+                    "Unexpected result type for container %s: %s",
+                    container_id,
+                    type(result),
+                )
+                output.append((container_id, None, None, "Unexpected result type"))
 
         return output
 
@@ -1793,23 +1918,25 @@ class AsyncPodman(_Podman):
         :param int tail: Number of lines to show from the end of the logs.
         :rtype: list of tuples (container_id, returncode, stdout, stderr).
         """
-        tasks = [self.logs(container_id, tail=tail)
-                 for container_id in container_ids]
+        tasks = [self.logs(container_id, tail=tail) for container_id in container_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         output = []
         for container_id, result in zip(container_ids, results):
             if isinstance(result, Exception):
-                LOG.error("Failed to get logs for container %s: %s",
-                          container_id, str(result))
+                LOG.error(
+                    "Failed to get logs for container %s: %s", container_id, str(result)
+                )
                 output.append((container_id, None, None, str(result)))
             elif isinstance(result, tuple) and len(result) == 3:
                 returncode, stdout, stderr = result
                 output.append((container_id, returncode, stdout, stderr))
             else:
-                LOG.error("Unexpected result type for container %s: %s",
-                          container_id, type(result))
-                output.append((container_id, None, None,
-                              "Unexpected result type"))
+                LOG.error(
+                    "Unexpected result type for container %s: %s",
+                    container_id,
+                    type(result),
+                )
+                output.append((container_id, None, None, "Unexpected result type"))
 
         return output
