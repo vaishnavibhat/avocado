@@ -20,7 +20,6 @@
 Module for all PCI devices related functions.
 """
 
-
 import errno
 import os
 import re
@@ -697,3 +696,19 @@ def get_cfg(dom_pci_address):
         device_subvendor = re.search(r"([0-9a-e]{8})", cfg_dic["Description"])
         cfg_dic["subvendor_device"] = device_subvendor.group()
     return cfg_dic
+
+
+def is_accelerator():
+    """
+    Checks if any PCI device is of class 'accelerator'.
+
+    :return: True if an accelerator device is found, False otherwise.
+    :rtype: bool
+    """
+    for dev in os.listdir("/sys/bus/pci/devices"):
+        try:
+            if get_pci_class_name(dev) == "accelerator":
+                return True
+        except ValueError:
+            continue
+    return False
