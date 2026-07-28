@@ -12,6 +12,7 @@ jobs:
 
   user-installation:
     name: User installation commands
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     strategy:
@@ -54,6 +55,7 @@ jobs:
 
   system-wide-installation:
     name: System wide installation commands
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     strategy:
@@ -96,6 +98,7 @@ jobs:
 
   devel-user-installation:
     name: Developer user commands
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     strategy:
@@ -137,6 +140,7 @@ jobs:
 
   devel-wide-system-installation:
     name: Developer system wide commands
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     strategy:
@@ -178,6 +182,7 @@ jobs:
 
   virtualenv-installation:
     name: Virtualenv installation
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -211,6 +216,7 @@ jobs:
 
   devel-virtualenv-installation:
     name: Developer Virtualenv installation
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
 
     steps:
