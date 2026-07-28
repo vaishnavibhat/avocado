@@ -10,6 +10,7 @@ jobs:
 
   make-check:
     name: Run 'make check'
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -40,6 +41,7 @@ jobs:
 
   avocado-pre-release:
     name: Avocado pre-release job
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -60,9 +62,9 @@ jobs:
           retention-days: 1
 
   check-rpm-available-copr:
-    # temporarily disabled: current maintainers don't have COPR access
-    if: ${{ false }}
     name: Check the right RPM packages are available in COPR
+    # temporarily disabled: current maintainers don't have COPR access
+    if: ${{ github.repository == 'avocado-framework/avocado' && false }}
     runs-on: ubuntu-latest
     timeout-minutes: 130
     steps:
@@ -74,6 +76,7 @@ jobs:
 
   avocado-deployment-copr:
     name: Avocado deployment
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-latest
     container:
       image: fedora:42
@@ -101,6 +104,7 @@ jobs:
 
   package-build:
     name: Build Package (wheel/tarball)
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
@@ -116,7 +120,7 @@ jobs:
 
   publish-to-test-pypi:
     name: Publish Avocado to TestPyPI
-    if: github.repository == 'avocado-framework/avocado'
+    if: ${{ github.repository == 'avocado-framework/avocado' }}
     needs:
     - package-build
     runs-on: ubuntu-latest
