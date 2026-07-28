@@ -452,7 +452,7 @@ class ArchiveFile:
                 try:
                     os.chmod(dst, mode)
                 except (OSError, FileNotFoundError) as e:
-                    LOG.warning("Failed to update permissions for '%s'", e)
+                    LOG.warning("Failed to update permissions for '%s': %s", dst, e)
 
     def close(self):
         """
