@@ -104,11 +104,13 @@ class Replay(CLICmd):
                 data = json.load(fh)
         except (OSError, json.decoder.JSONDecodeError):
             return set()
-        return {
-            t["name"]
-            for t in data.get("tests", [])
-            if t.get("status", "").upper() in ("PASS", "SKIP")
-        }
+        completed = set()
+        for t in data.get("tests", []):
+            name = t.get("name")
+            status = t.get("status")
+            if name and isinstance(status, str) and status.upper() in ("PASS", "SKIP"):
+                completed.add(name)
+        return completed
 
     def run(self, config):
         namespace = "job.replay.source_job_id"
@@ -134,7 +136,7 @@ class Replay(CLICmd):
                     "Resume mode: skipping %d previously completed test(s).",
                     len(completed),
                 )
-            source_job_config["job.replay.resume.completed_tests"] = completed
+            source_job_config["job.replay.resume.completed_tests"] = list(completed)
         with job.Job.from_config(source_job_config) as job_instance:
             job_run = job_instance.run()
         return job_run
