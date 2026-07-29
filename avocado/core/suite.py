@@ -110,6 +110,7 @@ class TestSuite:
         self._references = None
         self._runner = None
         self._test_parameters = None
+        self.resume_start_index = 0
 
         self._check_both_parameters_and_variants()
 
@@ -289,7 +290,11 @@ class TestSuite:
         :returns: stable test+variant name string
         :rtype: str
         """
-        variant_id = runnable.variant.get("variant_id") if isinstance(runnable.variant, dict) else None
+        variant_id = (
+            runnable.variant.get("variant_id")
+            if isinstance(runnable.variant, dict)
+            else None
+        )
         if variant_id:
             return f"{runnable.identifier};{variant_id}"
         return runnable.identifier
@@ -370,9 +375,11 @@ class TestSuite:
         if completed:
             completed_set = set(completed)
             suite.tests = [
-                r for r in suite.tests
-                if cls._runnable_name(r) not in completed_set
+                r for r in suite.tests if cls._runnable_name(r) not in completed_set
             ]
+            suite.resume_start_index = len(completed_set)
+        else:
+            suite.resume_start_index = 0
 
         if not config.get("run.ignore_missing_references"):
             if not suite.tests:
