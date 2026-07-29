@@ -68,11 +68,7 @@ class Replay(CLICmd):
         sys.exit(exit_codes.AVOCADO_FAIL)
 
     @staticmethod
-    def _retrieve_source_job_config(source_job_id):
-        results_dir = get_job_results_dir(source_job_id)
-        if not results_dir:
-            msg = f"Could not find the results directory " f'for Job "{source_job_id}"'
-            Replay._exit_fail(msg)
+    def _retrieve_source_job_config(source_job_id, results_dir):
         try:
             return retrieve_job_config(results_dir)
         except OSError:
@@ -83,20 +79,14 @@ class Replay(CLICmd):
             Replay._exit_fail(msg)
 
     @staticmethod
-    def _load_completed_test_names(results_dir):
-        """Return the set of test name strings that already passed or were
-        skipped in the source job.
+    def _collect_from_results_json(results_path):
+        """Return PASS/SKIP test names from a single results.json file.
 
-        Each entry is ``"{identifier};{variant_id}"`` (or just
-        ``"{identifier}"`` when no variant was used), matching the ``name``
-        field written by :class:`avocado.plugins.jsonresult.JSONResult`.
-
-        :param results_dir: path to the source job results directory
-        :type results_dir: str
+        :param results_path: absolute path to a results.json file
+        :type results_path: str
         :returns: set of completed test name strings
         :rtype: set
         """
-        results_path = os.path.join(results_dir, "results.json")
         if not os.path.exists(results_path):
             return set()
         try:
@@ -112,17 +102,96 @@ class Replay(CLICmd):
                 completed.add(name)
         return completed
 
+    @staticmethod
+    def _load_completed_test_names(results_dir):
+        """Return the set of test names already passed or skipped across the
+        full replay chain rooted at *results_dir*.
+
+        When a job is interrupted and replayed multiple times, each replay
+        job dir stores only the results of *that* run.  To find the complete
+        set of tests that must be skipped on the next resume we must walk the
+        chain:
+
+          results_dir  →  its replay job dir  →  that job's replay dir  →  …
+
+        Each link is found via the ``job.replay.source_job_id`` key stored
+        in ``jobdata/args.json`` of the *replaying* job.  We follow the chain
+        forward (newer → older is already covered by the root dir itself;
+        we follow forward through all replay dirs that pointed *back* to
+        this root) by scanning all job dirs in the same logs directory.
+
+        Practically, we collect PASS/SKIP names from every job dir whose
+        source is the same root job id, plus the root dir itself.
+
+        :param results_dir: path to the *original* (root) source job results
+                            directory
+        :type results_dir: str
+        :returns: cumulative set of completed test name strings
+        :rtype: set
+        """
+        completed = Replay._collect_from_results_json(
+            os.path.join(results_dir, "results.json")
+        )
+
+        # Read the root job id so we can find all replay dirs that used it
+        # as their source.
+        root_id_path = os.path.join(results_dir, "id")
+        if not os.path.isfile(root_id_path):
+            return completed
+        try:
+            with open(root_id_path, "r", encoding="utf-8") as fh:
+                root_id = fh.read().strip()
+        except OSError:
+            return completed
+        if not root_id:
+            return completed
+
+        # Walk all sibling job dirs looking for replay dirs whose source_job_id
+        # matches the root job id (full or prefix match, as avocado stores it).
+        logs_dir = os.path.dirname(results_dir)
+        try:
+            entries = sorted(os.listdir(logs_dir))
+        except OSError:
+            return completed
+
+        visited = {os.path.abspath(results_dir)}
+        for entry in entries:
+            job_path = os.path.join(logs_dir, entry)
+            if not entry.startswith("job-") or not os.path.isdir(job_path):
+                continue
+            abs_path = os.path.abspath(job_path)
+            if abs_path in visited:
+                continue
+            try:
+                cfg = retrieve_job_config(job_path)
+            except Exception:  # noqa: BLE001
+                continue
+            if cfg is None:
+                continue
+            src = cfg.get("job.replay.source_job_id", "")
+            # src may be a full path (when wrapper passes absolute path) or
+            # a job id string; either way we match against the root dir path
+            # and the root job id.
+            if (
+                src == results_dir
+                or src == os.path.abspath(results_dir)
+                or (isinstance(src, str) and root_id.startswith(src))
+            ):
+                visited.add(abs_path)
+                completed |= Replay._collect_from_results_json(
+                    os.path.join(job_path, "results.json")
+                )
+
+        return completed
+
     def run(self, config):
         namespace = "job.replay.source_job_id"
         source_job_id = config.get(namespace)
         results_dir = get_job_results_dir(source_job_id)
         if not results_dir:
-            msg = (
-                f"Could not find the results directory "
-                f'for Job "{source_job_id}"'
-            )
+            msg = f"Could not find the results directory " f'for Job "{source_job_id}"'
             self._exit_fail(msg)
-        source_job_config = self._retrieve_source_job_config(source_job_id)
+        source_job_config = self._retrieve_source_job_config(source_job_id, results_dir)
         if hasattr(source_job_config, namespace):
             del source_job_config[namespace]
         # Flag that this is indeed a replayed job, which is impossible to
