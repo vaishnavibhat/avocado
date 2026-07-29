@@ -368,9 +368,10 @@ class TestSuite:
 
         completed = config.get("job.replay.resume.completed_tests")
         if completed:
+            completed_set = set(completed)
             suite.tests = [
                 r for r in suite.tests
-                if cls._runnable_name(r) not in completed
+                if cls._runnable_name(r) not in completed_set
             ]
 
         if not config.get("run.ignore_missing_references"):
