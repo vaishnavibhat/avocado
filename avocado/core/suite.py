@@ -289,7 +289,7 @@ class TestSuite:
         :returns: stable test+variant name string
         :rtype: str
         """
-        variant_id = (runnable.variant or {}).get("variant_id")
+        variant_id = runnable.variant.get("variant_id") if isinstance(runnable.variant, dict) else None
         if variant_id:
             return f"{runnable.identifier};{variant_id}"
         return runnable.identifier
