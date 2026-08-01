@@ -5,8 +5,8 @@ Welcome to Avocado
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
    :alt: Black
-.. |ci| image:: https://img.shields.io/github/actions/workflow/status/avocado-framework/avocado/ci.yml?label=ci
-   :target: https://github.com/avocado-framework/avocado/actions/workflows/ci.yml
+.. |ci| image:: https://img.shields.io/github/actions/workflow/status/avocado-framework/avocado/push_ci.yml?branch=master&event=push&logo=githubactions&label=CI
+   :target: https://github.com/avocado-framework/avocado/actions/workflows/push_ci.yml
    :alt: Avocado CI
 .. |codecov| image:: https://img.shields.io/codecov/c/github/avocado-framework/avocado
    :target: https://app.codecov.io/gh/avocado-framework/avocado
@@ -25,7 +25,7 @@ Welcome to Avocado
    :alt: License
 .. |py-versions| image:: https://img.shields.io/pypi/pyversions/avocado-framework
    :alt: PyPI - Python Version
-.. |pypi-version| image:: https://img.shields.io/pypi/v/avocado-framework
+.. |pypi-version| image:: https://img.shields.io/pypi/v/avocado-framework?logo=pypi&label=PyPI
    :target: https://pypi.org/project/avocado-framework
    :alt: PyPI - Version
 
