@@ -56,8 +56,12 @@ class StatusServer:
         while True:
             try:
                 raw_message = await reader.readline()
-            except ConnectionResetError:
-                continue
+            except ConnectionResetError as e:
+                LOG.warning("Connection was reset: %s", e)
+                return
+            except BrokenPipeError as e:
+                LOG.warning("Broken pipe: %s", e)
+                return
             if not raw_message:
                 return
             try:
