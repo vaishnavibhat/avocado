@@ -303,6 +303,7 @@ class RuntimeTaskGraph:
         job_id,
         base_dir,
         suite_config=None,
+        index_offset=0,
     ):
         """Instantiates a new RuntimeTaskGraph.
 
@@ -324,11 +325,16 @@ class RuntimeTaskGraph:
         :type base_dir: str
         :param suite_config: Configuration dict relevant for the whole suite.
         :type suite_config: dict
+        :param index_offset: number of tests already completed (resume mode);
+                             test numbering starts at index_offset+1 and the
+                             total reflects the full original count.
+        :type index_offset: int
         """
         self.graph = {}
         # create graph
-        no_digits = len(str(len(tests)))
-        for index, runnable in enumerate(tests, start=1):
+        total = len(tests) + index_offset
+        no_digits = len(str(total))
+        for index, runnable in enumerate(tests, start=index_offset + 1):
             runtime_test = RuntimeTask.from_runnable(
                 runnable,
                 no_digits,

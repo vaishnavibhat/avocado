@@ -292,7 +292,8 @@ class Runner(SuiteRunner):
 
         self._abort_if_missing_runners(missing_requirements)
 
-        job.result.tests_total = len(test_suite.tests)
+        resume_start_index = getattr(test_suite, "resume_start_index", 0)
+        job.result.tests_total = len(test_suite.tests) + resume_start_index
 
         self._create_status_server(test_suite, job)
 
@@ -303,6 +304,7 @@ class Runner(SuiteRunner):
             job.unique_id,
             job.test_results_path,
             test_suite.config,
+            index_offset=resume_start_index,
         )
         # pylint: disable=W0201
         self.runtime_tasks = graph.get_tasks_in_topological_order()
