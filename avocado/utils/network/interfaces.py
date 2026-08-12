@@ -43,6 +43,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from ipaddress import AddressValueError, IPv4Address, ip_interface
@@ -215,6 +216,32 @@ class NetworkInterface:
         except Exception as exc:
             raise NWException(
                 f"Slave interface not found for " f"the bond {self.name}"
+            ) from exc
+
+    def get_bond_master(self):
+        """Get the bonding master interface name from a slave interface.
+
+        This method returns the bond interface name for the current slave
+        interface, or ``None`` if the resolved master device is not a bond.
+
+        :return: Bond master interface name if the master is a bonding device,
+                 ``None`` if the master symlink exists but does not point to a
+                 bond interface.
+        :rtype: str or None
+        :raises avocado.utils.network.exceptions.NWException: If the master
+                 symlink cannot be read or the command fails.
+        """
+        master_path = f"/sys/class/net/{self.name}/master"
+        cmd = f"readlink {shlex.quote(master_path)}"
+        try:
+            output = run_command(cmd, self.host)
+            bond_name = os.path.basename(output.strip())
+            if NetworkInterface(bond_name, self.host, if_type="Bond").is_bond():
+                return bond_name
+            return None
+        except Exception as exc:
+            raise NWException(
+                f"Bonding master not found for interface {self.name}"
             ) from exc
 
     def _move_file_to_backup(self, filename, ignore_missing=True):
@@ -559,7 +586,7 @@ class NetworkInterface:
             if self.if_type == "Ethernet":
                 if not os.path.exists(f"{path}/{filename}"):
                     run_command(
-                        f"nmcli connection add con-name {self.name} ifname {self.name} type ethernet ipv4.address {ipaddr}/{prefix}",
+                        f"nmcli connection add con-name {shlex.quote(self.name)} ifname {shlex.quote(self.name)} type ethernet ipv4.address {ipaddr}/{prefix}",
                         self.host,
                     )
                 self._move_file_to_backup(f"{path}/{filename}")
@@ -567,17 +594,17 @@ class NetworkInterface:
                     destination = f"{path}/{filename}"
                     shutil.copy(f"{path}/{filename}.backup", destination)
                 run_command(
-                    f"nmcli c mod id {self.name} ipv4.method manual ipv4.address {ipaddr}/{prefix}",
+                    f"nmcli c mod id {shlex.quote(self.name)} ipv4.method manual ipv4.address {ipaddr}/{prefix}",
                     self.host,
                 )
-                run_command(f"nmcli connection up {self.name}", self.host)
+                run_command(f"nmcli connection up {shlex.quote(self.name)}", self.host)
 
             if self.if_type == "Bond":
                 bond_dict = self._get_bondinterface_details()
                 mode = bond_dict["mode"][0]
                 if os.path.exists(f"{path}/{filename}") is False:
                     run_command(
-                        f"nmcli connection add con-name {self.name} ifname {self.name} type bond ipv4.address {ipaddr}/{prefix}"
+                        f"nmcli connection add con-name {shlex.quote(self.name)} ifname {shlex.quote(self.name)} type bond ipv4.address {ipaddr}/{prefix}"
                         f' bond.options "mode={mode},miimon=100"',
                         self.host,
                     )
@@ -586,10 +613,10 @@ class NetworkInterface:
                     destination = f"{path}/{filename}"
                     shutil.copy(f"{path}/{filename}.backup", destination)
                 run_command(
-                    f"nmcli c mod id {self.name} ipv4.method manual ipv4.address {ipaddr}/{prefix}",
+                    f"nmcli c mod id {shlex.quote(self.name)} ipv4.method manual ipv4.address {ipaddr}/{prefix}",
                     self.host,
                 )
-                run_command(f"nmcli connection up {self.name}", self.host)
+                run_command(f"nmcli connection up {shlex.quote(self.name)}", self.host)
 
         def save_distro_rhel8_or_older():
             filename = f"ifcfg-{self.name}"
@@ -689,7 +716,7 @@ class NetworkInterface:
         :type timeout: int
         :raises avocado.utils.network.exceptions.NWException: If setting the MTU fails.
         """
-        cmd = f"ip link set {self.name} mtu {mtu}"
+        cmd = f"ip link set {shlex.quote(self.name)} mtu {mtu}"
         run_command(cmd, self.host, sudo=True)
         wait_for(self.is_link_up, timeout=timeout)
         if int(mtu) != self.get_mtu():
@@ -746,7 +773,7 @@ class NetworkInterface:
 
         :raises avocado.utils.network.exceptions.NWException: If flushing the IP addresses fails.
         """
-        cmd = f"nmcli -g ip4.ADDRESS device show {self.name}"
+        cmd = f"nmcli -g ip4.ADDRESS device show {shlex.quote(self.name)}"
         ipaddresses_str = run_command(cmd, self.host, sudo=True).strip()
         if not ipaddresses_str:
             return
@@ -755,7 +782,7 @@ class NetworkInterface:
         if ipaddresses:
             try:
                 for ipaddr in ipaddresses:
-                    cmd = f"ip addr delete {ipaddr} dev {self.name}"
+                    cmd = f"ip addr delete {shlex.quote(ipaddr)} dev {shlex.quote(self.name)}"
                     run_command(cmd, self.host, sudo=True)
             except Exception as ex:
                 msg = f"Failed to flush ipaddr. {ex}"
@@ -819,7 +846,7 @@ class NetworkInterface:
         :return: True if the interface is a bonding device, False otherwise.
         :rtype: bool
         """
-        cmd = f"cat /proc/net/bonding/{self.name}"
+        cmd = f"cat /proc/net/bonding/{shlex.quote(self.name)}"
         try:
             run_command(cmd, self.host)
             return True
